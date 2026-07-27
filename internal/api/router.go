@@ -8,6 +8,12 @@ import (
 func New(trackHandler *handler.TrackHandler) *gin.Engine {
 	r := gin.Default()
 
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		c.Next()
+	})
+
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(404, gin.H{"code": "PAGE_NOT_FOUND", "message": "Page not found"})
 		return
