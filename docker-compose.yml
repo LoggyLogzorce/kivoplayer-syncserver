@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: tracker-postgres
+    container_name: kivoapps-sync-postgres
     env_file:
       - .env
     environment:
