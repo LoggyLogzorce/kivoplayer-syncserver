@@ -8,14 +8,24 @@ import (
 func New(trackHandler *handler.TrackHandler) *gin.Engine {
 	r := gin.Default()
 
+	r.NoRoute(func(c *gin.Context) {
+		c.JSON(404, gin.H{"code": "PAGE_NOT_FOUND", "message": "Page not found"})
+		return
+	})
+
+	r.RedirectTrailingSlash = false
+
 	api := r.Group("/api")
 	{
-		api.POST("/sync", trackHandler.Sync)
+		api.POST("/sync/check", trackHandler.Sync)
 
-		tracks := api.Group("/tracks")
+		tracks := api.Group("/tracks/:audio-fingerprint")
 		{
-			tracks.GET("/:fingerprint/lyrics", trackHandler.GetLyrics)
-			tracks.POST("/:fingerprint/lyrics", trackHandler.UploadLyrics)
+			tracks.POST("", trackHandler.UploadTrack)
+			tracks.GET("", trackHandler.GetTrack)
+
+			tracks.POST("/lyrics/:lrc-fingerprint", trackHandler.UploadLyrics)
+			tracks.GET("/lyrics/:lrc-fingerprint", trackHandler.GetLyrics)
 		}
 	}
 

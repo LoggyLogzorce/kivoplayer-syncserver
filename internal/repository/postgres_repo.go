@@ -20,9 +20,6 @@ func NewTrackRepository(db *gorm.DB) *TrackRepository {
 func (r *TrackRepository) UpsertTrack(track *models.Track) error {
 	return r.db.Where(models.Track{Fingerprint: track.Fingerprint}).
 		Assign(models.Track{
-			Title:    track.Title,
-			Artist:   track.Artist,
-			Album:    track.Album,
 			Duration: track.Duration,
 		}).
 		FirstOrCreate(track).Error
@@ -30,12 +27,12 @@ func (r *TrackRepository) UpsertTrack(track *models.Track) error {
 
 // GetByFingerprint возвращает трек по fingerprint.
 func (r *TrackRepository) GetByFingerprint(fp string) (*models.Track, error) {
-	var track models.Track
+	var track *models.Track
 	err := r.db.Where("fingerprint = ?", fp).First(&track).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
-	return &track, err
+	return track, err
 }
 
 // GetFingerprintsWithLyrics принимает список fingerprint'ов и возвращает те,
@@ -57,6 +54,11 @@ type FingerprintLyricsInfo struct {
 	LyricsUpdatedAt string `json:"lyrics_updated_at"`
 }
 
+// SetTrackFileName обновляет имя файла трека.
+func (r *TrackRepository) SetTrackFileName(trackID uuid.UUID, fileName string) error {
+	return r.db.Model(&models.Track{}).Where("id = ?", trackID).Update("file_name", fileName).Error
+}
+
 // GetLyricsByTrackID возвращает текст для трека.
 func (r *TrackRepository) GetLyricsByTrackID(trackID uuid.UUID) (*models.Lyrics, error) {
 	var lyrics models.Lyrics
@@ -74,12 +76,17 @@ func (r *TrackRepository) UpsertLyrics(lyrics *models.Lyrics) error {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return r.db.Create(lyrics).Error
 	}
-	if err != nil {
-		return err
-	}
-	return r.db.Model(&existing).Updates(map[string]any{
-		"content":  lyrics.Content,
-		"is_timed": lyrics.IsTimed,
-		"source":   lyrics.Source,
-	}).Error
+	return err
+}
+
+func (r *TrackRepository) GetAllTracks() ([]models.Track, error) {
+	var tracks []models.Track
+	err := r.db.Find(&tracks).Error
+	return tracks, err
+}
+
+func (r *TrackRepository) GetAllLyrics() ([]models.Lyrics, error) {
+	var lyrics []models.Lyrics
+	err := r.db.Find(&lyrics).Error
+	return lyrics, err
 }

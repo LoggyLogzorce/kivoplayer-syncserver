@@ -1,9 +1,8 @@
 package main
 
 import (
-	"kivo-player_sync-server/internal/models"
-	"kivo-player_sync-server/internal/service"
 	"log"
+	"os"
 
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
@@ -11,7 +10,9 @@ import (
 	"kivo-player_sync-server/internal/api"
 	"kivo-player_sync-server/internal/config"
 	"kivo-player_sync-server/internal/handler"
+	"kivo-player_sync-server/internal/models"
 	"kivo-player_sync-server/internal/repository"
+	"kivo-player_sync-server/internal/service"
 )
 
 func main() {
@@ -31,6 +32,12 @@ func main() {
 
 	if err := database.AutoMigrate(&models.Track{}, &models.Lyrics{}); err != nil {
 		log.Fatalf("automigrate: %v", err)
+	}
+
+	for _, dir := range []string{"lyrics", "music"} {
+		if err := os.MkdirAll("internal/storage/"+dir, 0755); err != nil {
+			log.Fatalf("create %s dir: %v", dir, err)
+		}
 	}
 
 	trackRepo := repository.NewTrackRepository(database)

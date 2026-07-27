@@ -1,7 +1,11 @@
 package handler
 
 import (
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"kivo-player_sync-server/internal/service"
@@ -15,7 +19,7 @@ func NewTrackHandler(svc *service.TrackService) *TrackHandler {
 	return &TrackHandler{svc: svc}
 }
 
-// POST /api/sync
+// Sync POST /api/sync
 // Тело: [{fingerprint, title, artist, album, duration}, ...]
 func (h *TrackHandler) Sync(c *gin.Context) {
 	var req []service.SyncRequest
@@ -37,40 +41,78 @@ func (h *TrackHandler) Sync(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// GET /api/tracks/:fingerprint/lyrics
-func (h *TrackHandler) GetLyrics(c *gin.Context) {
-	fp := c.Param("fingerprint")
+// UploadTrack POST /api/tracks/:audio-fingerprint
+// Форма: file=song.mp3
+func (h *TrackHandler) UploadTrack(c *gin.Context) {
+	fp := c.Param("audio-fingerprint")
 
-	lyrics, err := h.svc.GetLyrics(fp)
+	file, header, err := c.Request.FormFile("file")
 	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
+		return
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "read file"})
+		return
+	}
+
+	if err := h.svc.UploadTrack(fp, content, header.Filename); err != nil {
+		if errors.Is(err, service.ErrFileAlreadyExists) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if lyrics == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-		return
-	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"content":    lyrics.Content,
-		"is_timed":   lyrics.IsTimed,
-		"source":     lyrics.Source,
-		"updated_at": lyrics.UpdatedAt,
-	})
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-// POST /api/tracks/:fingerprint/lyrics
-// Тело: {content, is_timed, source}
-func (h *TrackHandler) UploadLyrics(c *gin.Context) {
-	fp := c.Param("fingerprint")
+// GetTrack GET /api/tracks/:audio-fingerprint
+func (h *TrackHandler) GetTrack(c *gin.Context) {
+	fp := c.Param("audio-fingerprint")
 
-	var req service.UploadLyricsRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	filePath, err := h.svc.GetTrackPath(fp)
+	if err != nil {
+		if err.Error() == "track not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := h.svc.UploadLyrics(fp, req); err != nil {
+	c.FileAttachment(filePath, filepath.Base(filePath))
+}
+
+// UploadLyrics POST /api/tracks/:audio-fingerprint/lyrics/:lrc-fingerprint
+// Форма: file=song.lrc
+func (h *TrackHandler) UploadLyrics(c *gin.Context) {
+	audioFp := c.Param("audio-fingerprint")
+	lrcFp := c.Param("lrc-fingerprint")
+
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
+		return
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "read file"})
+		return
+	}
+
+	if err := h.svc.UploadLyrics(audioFp, lrcFp, header.Filename, content); err != nil {
+		if errors.Is(err, service.ErrFileAlreadyExists) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
 		if err.Error() == "track not found" {
 			c.JSON(http.StatusNotFound, gin.H{"error": "track not found"})
 			return
@@ -80,4 +122,21 @@ func (h *TrackHandler) UploadLyrics(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// GetLyrics GET /api/tracks/:audio-fingerprint/lyrics/:lrc-fingerprint
+func (h *TrackHandler) GetLyrics(c *gin.Context) {
+	fp := c.Param("audio-fingerprint")
+
+	filePath, err := h.svc.GetLyricsPath(fp)
+	if err != nil {
+		if err.Error() == "track not found" || err.Error() == "lyrics not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.FileAttachment(filePath, filepath.Base(filePath))
 }
