@@ -13,6 +13,10 @@ func New(trackHandler *handler.TrackHandler) *gin.Engine {
 		return
 	})
 
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{})
+	})
+
 	r.RedirectTrailingSlash = false
 
 	api := r.Group("/api")

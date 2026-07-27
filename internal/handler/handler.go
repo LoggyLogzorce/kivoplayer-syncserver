@@ -27,10 +27,6 @@ func (h *TrackHandler) Sync(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if len(req) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "empty list"})
-		return
-	}
 
 	result, err := h.svc.Sync(req)
 	if err != nil {
