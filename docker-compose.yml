@@ -21,7 +21,6 @@ services:
 
   app:
     build:
-      context: ..
       dockerfile: ./Dockerfile
     container_name: tracker-backend
     env_file:
