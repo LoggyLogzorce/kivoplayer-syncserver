@@ -22,7 +22,7 @@ services:
   app:
     build:
       dockerfile: ./Dockerfile
-    container_name: tracker-backend
+    container_name: kivoapps-sync-server
     env_file:
       - .env
     volumes:
