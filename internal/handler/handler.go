@@ -3,12 +3,11 @@ package handler
 import (
 	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"io"
+	"kivo-player_sync-server/internal/service"
 	"net/http"
 	"path/filepath"
-
-	"github.com/gin-gonic/gin"
-	"kivo-player_sync-server/internal/service"
 )
 
 type TrackHandler struct {
