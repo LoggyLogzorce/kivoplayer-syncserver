@@ -44,7 +44,7 @@ func main() {
 	trackSvc := service.NewTrackService(trackRepo)
 	trackHandler := handler.NewTrackHandler(trackSvc)
 
-	r := api.New(trackHandler)
+	r := api.New(trackHandler, cfg.AuthKey)
 
 	log.Printf("starting on :%s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {

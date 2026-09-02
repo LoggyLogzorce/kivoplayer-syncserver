@@ -6,8 +6,9 @@ import (
 )
 
 type Config struct {
-	Port string
-	DSN  string
+	Port    string
+	DSN     string
+	AuthKey string
 }
 
 func Load() (*Config, error) {
@@ -38,8 +39,14 @@ func Load() (*Config, error) {
 		sslmode,
 	)
 
+	authKey := os.Getenv("AUTH_KEY")
+	if authKey == "" {
+		return nil, fmt.Errorf("missing required env var: %s", os.Getenv("AUTH_KEY"))
+	}
+
 	return &Config{
-		Port: port,
-		DSN:  dsn,
+		Port:    port,
+		DSN:     dsn,
+		AuthKey: authKey,
 	}, nil
 }

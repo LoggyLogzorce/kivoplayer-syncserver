@@ -3,9 +3,10 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 	"kivo-player_sync-server/internal/handler"
+	"net/http"
 )
 
-func New(trackHandler *handler.TrackHandler) *gin.Engine {
+func New(trackHandler *handler.TrackHandler, authKey string) *gin.Engine {
 	r := gin.Default()
 
 	r.Use(func(c *gin.Context) {
@@ -26,6 +27,14 @@ func New(trackHandler *handler.TrackHandler) *gin.Engine {
 	r.RedirectTrailingSlash = false
 
 	api := r.Group("/api")
+	api.Use(func(c *gin.Context) {
+		token := c.Request.Header.Get("Authorization")
+		if token != authKey {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "Invalid token"})
+			return
+		}
+		c.Next()
+	})
 	{
 		api.POST("/sync/check", trackHandler.Sync)
 
